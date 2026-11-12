@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/database/">
+    <File Path="database/BiblioTech.Azure.sql" />
+    <File Path="database/BiblioTech.sql" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="BiblioTech.Api/BiblioTech.Api.csproj" />
+  <Project Path="BiblioTech.Web/BiblioTech.Web/BiblioTech.Web.csproj" />
+  <Project Path="BiblioTech.Web/BiblioTech.Web.Client/BiblioTech.Web.Client.csproj" />
+</Solution>
