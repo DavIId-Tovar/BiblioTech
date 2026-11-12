@@ -1,5 +1,6 @@
 using BiblioTech.Api.Data;
 using BiblioTech.Api.DTOs.Autores;
+using BiblioTech.Api.Exceptions;
 using BiblioTech.Api.Models;
 using BiblioTech.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -7,8 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace BiblioTech.Api.Services;
 
 /// <summary>
-/// Versión del día 2: si algo no existe devuelve null / false y el Controller
-/// decide el código HTTP. El día 3 se cambia por excepciones + middleware.
+/// Versión del día 3: en vez de devolver null/false, el servicio LANZA excepciones
+/// de negocio y el middleware las convierte en 404 / 409. El Controller queda más limpio.
 /// </summary>
 public class AutorService(BibliotecaContext db) : IAutorService
 {
@@ -27,7 +28,7 @@ public class AutorService(BibliotecaContext db) : IAutorService
             .ToListAsync();
     }
 
-    public async Task<AutorDto?> ObtenerAsync(int id)
+    public async Task<AutorDto> ObtenerAsync(int id)
     {
         return await db.Autores
             .Where(a => a.Id == id)
@@ -38,7 +39,8 @@ public class AutorService(BibliotecaContext db) : IAutorService
                 Nacionalidad = a.Nacionalidad,
                 CantidadLibros = a.Libros.Count
             })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync()
+            ?? throw new NoEncontradoException($"El autor {id} no existe.");
     }
 
     public async Task<AutorDto> CrearAsync(AutorGuardarDto dto)
@@ -55,25 +57,27 @@ public class AutorService(BibliotecaContext db) : IAutorService
         return new AutorDto { Id = autor.Id, Nombre = autor.Nombre, Nacionalidad = autor.Nacionalidad };
     }
 
-    public async Task<bool> ActualizarAsync(int id, AutorGuardarDto dto)
+    public async Task ActualizarAsync(int id, AutorGuardarDto dto)
     {
-        var autor = await db.Autores.FindAsync(id);
-        if (autor is null) return false;
+        var autor = await db.Autores.FindAsync(id)
+            ?? throw new NoEncontradoException($"El autor {id} no existe.");
 
         autor.Nombre = dto.Nombre.Trim();
         autor.Nacionalidad = string.IsNullOrWhiteSpace(dto.Nacionalidad) ? null : dto.Nacionalidad.Trim();
 
         await db.SaveChangesAsync();   // UPDATE solo de las columnas que cambiaron
-        return true;
     }
 
-    public async Task<bool> EliminarAsync(int id)
+    public async Task EliminarAsync(int id)
     {
-        var autor = await db.Autores.FindAsync(id);
-        if (autor is null) return false;
+        var autor = await db.Autores.FindAsync(id)
+            ?? throw new NoEncontradoException($"El autor {id} no existe.");
+
+        var cantidadLibros = await db.Libros.CountAsync(l => l.Autores.Any(a => a.Id == id));
+        if (cantidadLibros > 0)
+            throw new ReglaNegocioException($"No se puede eliminar: el autor tiene {cantidadLibros} libro(s) asociado(s).");
 
         db.Autores.Remove(autor);
         await db.SaveChangesAsync();   // DELETE
-        return true;
     }
 }

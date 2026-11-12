@@ -1,3 +1,69 @@
-@BiblioTech.Api_HostAddress = https://localhost:7225
+@host = https://localhost:7225
+# 1) Ejecuta "registrar-inicial" una sola vez (con la tabla Usuarios vacía).
+# 2) Ejecuta "login", copia el token de la respuesta y pégalo aquí:
+@token = PEGA_AQUI_EL_TOKEN
 
-###
+### Crear el primer bibliotecario (solo funciona con la tabla Usuarios vacía)
+POST {{host}}/api/auth/registrar-inicial
+Content-Type: application/json
+
+{
+  "email": "bibliotecario@bibliotech.com",
+  "password": "Biblio2026!"
+}
+
+### Login → devuelve el token JWT
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "bibliotecario@bibliotech.com",
+  "password": "Biblio2026!"
+}
+
+### Dashboard (procedimiento almacenado)
+GET {{host}}/api/dashboard
+Authorization: Bearer {{token}}
+
+### Libros con búsqueda
+GET {{host}}/api/libros?buscar=fowler
+Authorization: Bearer {{token}}
+
+### R2: Ana ya tiene 3 préstamos → 409
+POST {{host}}/api/prestamos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "libroId": 2, "socioId": 1 }
+
+### R3: Carlos tiene un vencido → 409
+POST {{host}}/api/prestamos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "libroId": 2, "socioId": 2 }
+
+### R1: "Test Driven Development" sin ejemplares → 409
+POST {{host}}/api/prestamos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "libroId": 7, "socioId": 4 }
+
+### R6: Sofía está inactiva → 409
+POST {{host}}/api/prestamos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "libroId": 2, "socioId": 5 }
+
+### Camino feliz: Pedro presta "Clean Architecture" → 201
+POST {{host}}/api/prestamos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "libroId": 8, "socioId": 4 }
+
+### Préstamos vencidos (vista SQL)
+GET {{host}}/api/prestamos/vencidos
+Authorization: Bearer {{token}}
