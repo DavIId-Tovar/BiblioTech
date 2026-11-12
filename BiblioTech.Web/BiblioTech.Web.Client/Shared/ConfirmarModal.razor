@@ -1,0 +1,33 @@
+@* Ventana de confirmación antes de acciones que no se deshacen (eliminar, devolver...). *@
+
+@if (Visible)
+{
+    <div class="modal d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Titulo</h5>
+                    <button type="button" class="btn-close" aria-label="Cerrar" @onclick="OnCancelar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">@Mensaje</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="OnCancelar">Cancelar</button>
+                    <button type="button" class="btn btn-@TipoBoton" @onclick="OnConfirmar">@TextoConfirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Confirmar";
+    [Parameter] public string Mensaje { get; set; } = "¿Estás seguro?";
+    [Parameter] public string TextoConfirmar { get; set; } = "Confirmar";
+    [Parameter] public string TipoBoton { get; set; } = "danger";
+    [Parameter] public EventCallback OnConfirmar { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+}

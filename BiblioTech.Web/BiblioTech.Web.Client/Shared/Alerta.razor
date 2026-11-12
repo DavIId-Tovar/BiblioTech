@@ -1,0 +1,21 @@
+@* Mensaje de éxito o error reutilizable. Si Mensaje está vacío, no se dibuja nada. *@
+
+@if (!string.IsNullOrWhiteSpace(Mensaje))
+{
+    <div class="alert alert-@Tipo d-flex justify-content-between align-items-start" role="alert">
+        <span>@Mensaje</span>
+        @if (OnCerrar.HasDelegate)
+        {
+            <button type="button" class="btn-close ms-3" aria-label="Cerrar" @onclick="OnCerrar"></button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? Mensaje { get; set; }
+
+    /// <summary>success, danger, warning o info (colores de Bootstrap)</summary>
+    [Parameter] public string Tipo { get; set; } = "info";
+
+    [Parameter] public EventCallback OnCerrar { get; set; }
+}

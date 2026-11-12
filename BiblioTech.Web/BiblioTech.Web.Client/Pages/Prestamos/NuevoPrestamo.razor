@@ -1,0 +1,111 @@
+@page "/prestamos/nuevo"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject PrestamoApiService PrestamoApi
+@inject SocioApiService SocioApi
+@inject LibroApiService LibroApi
+
+<PageTitle>Nuevo préstamo · BiblioTech</PageTitle>
+
+<h1 class="h3 mb-3">Nuevo préstamo</h1>
+
+@* Si la API responde 409, aquí aparece el mensaje de la regla (R1, R2, R3 o R6) *@
+<Alerta Mensaje="@mensaje" Tipo="@tipoMensaje" OnCerrar="() => mensaje = null" />
+
+@if (socios is null || libros is null)
+{
+    @if (mensaje is null) { <Cargando /> }
+}
+else
+{
+    <div class="card shadow-sm" style="max-width: 640px">
+        <div class="card-body">
+            <EditForm Model="modelo" OnValidSubmit="PrestarAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label" for="socio">Socio</label>
+                    <InputSelect id="socio" class="form-select" @bind-Value="modelo.SocioId">
+                        <option value="0">— Selecciona un socio —</option>
+                        @foreach (var socio in socios)
+                        {
+                            <option value="@socio.Id">
+                                @socio.Nombre (@socio.PrestamosActivos activos)@(socio.Activo ? "" : " · INACTIVO")
+                            </option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => modelo.SocioId" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="libro">Libro</label>
+                    <InputSelect id="libro" class="form-select" @bind-Value="modelo.LibroId">
+                        <option value="0">— Selecciona un libro —</option>
+                        @foreach (var libro in libros)
+                        {
+                            <option value="@libro.Id">
+                                @libro.Titulo (@libro.EjemplaresDisponibles de @libro.EjemplaresTotales disponibles)
+                            </option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => modelo.LibroId" />
+                </div>
+
+                <p class="small text-secondary">
+                    La fecha de devolución la calcula el servidor: hoy + 15 días.
+                    Las listas incluyen a propósito socios inactivos y libros sin ejemplares,
+                    para ver que la API aplica las reglas.
+                </p>
+
+                <button type="submit" class="btn btn-primary" disabled="@enviando">Registrar préstamo</button>
+                <a class="btn btn-outline-secondary ms-2" href="prestamos">Volver</a>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private PrestamoCrearDto modelo = new();
+    private List<SocioDto>? socios;
+    private List<LibroDto>? libros;
+    private bool enviando;
+    private string? mensaje;
+    private string tipoMensaje = "danger";
+
+    protected override async Task CargarAsync()
+    {
+        try
+        {
+            socios = await SocioApi.ListarAsync();
+            libros = await LibroApi.ListarAsync();
+        }
+        catch (ApiException ex)
+        {
+            (mensaje, tipoMensaje) = (ex.Message, "danger");
+        }
+    }
+
+    private async Task PrestarAsync()
+    {
+        enviando = true;
+        mensaje = null;
+        try
+        {
+            var creado = await PrestamoApi.CrearAsync(modelo);   // POST api/prestamos
+            (mensaje, tipoMensaje) = (
+                $"Préstamo registrado: \"{creado.Titulo}\" para {creado.Socio}. Devolver antes del {creado.FechaDevolucionEsperada:dd/MM/yyyy}.",
+                "success");
+
+            modelo = new PrestamoCrearDto();
+            await CargarAsync();   // refresca disponibles y préstamos activos
+        }
+        catch (ApiException ex)
+        {
+            (mensaje, tipoMensaje) = (ex.Message, "danger");   // 409 con el mensaje de la regla
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+}

@@ -1,0 +1,22 @@
+@* Isla interactiva dentro del layout (que es estático): muestra quién está conectado.
+   Se dibuja con @rendermode desde MainLayout.razor del proyecto BiblioTech.Web. *@
+@inject AuthApiService AuthApi
+@inject NavigationManager Nav
+
+<AuthorizeView>
+    <Authorized>
+        <span class="text-secondary me-3 small">👤 @context.User.Identity?.Name</span>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="CerrarSesionAsync">Cerrar sesión</button>
+    </Authorized>
+    <NotAuthorized>
+        <a class="btn btn-sm btn-primary" href="login">Iniciar sesión</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private async Task CerrarSesionAsync()
+    {
+        await AuthApi.CerrarSesionAsync();
+        Nav.NavigateTo("login");
+    }
+}

@@ -1,0 +1,135 @@
+@page "/libros/nuevo"
+@page "/libros/editar/{Id:int}"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject LibroApiService LibroApi
+@inject AutorApiService AutorApi
+
+<PageTitle>@Titulo · BiblioTech</PageTitle>
+
+<h1 class="h3 mb-3">@Titulo</h1>
+
+<Alerta Mensaje="@error" Tipo="danger" OnCerrar="() => error = null" />
+
+@if (autores is null)
+{
+    @if (error is null) { <Cargando /> }
+}
+else
+{
+    <div class="card shadow-sm" style="max-width: 720px">
+        <div class="card-body">
+            <EditForm Model="modelo" OnValidSubmit="GuardarAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label" for="titulo">Título</label>
+                    <InputText id="titulo" class="form-control" @bind-Value="modelo.Titulo" />
+                    <ValidationMessage For="() => modelo.Titulo" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label" for="isbn">ISBN</label>
+                        <InputText id="isbn" class="form-control" @bind-Value="modelo.Isbn" />
+                        <ValidationMessage For="() => modelo.Isbn" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label" for="anio">Año</label>
+                        <InputNumber id="anio" class="form-control" @bind-Value="modelo.AnioPublicacion" />
+                        <ValidationMessage For="() => modelo.AnioPublicacion" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="totales">Ejemplares totales</label>
+                        <InputNumber id="totales" class="form-control" @bind-Value="modelo.EjemplaresTotales" />
+                        <ValidationMessage For="() => modelo.EjemplaresTotales" />
+                    </div>
+                </div>
+
+                @* Relación N:N: un libro puede tener varios autores *@
+                <div class="mb-4">
+                    <label class="form-label d-block">Autores</label>
+                    <div class="border rounded p-2" style="max-height: 220px; overflow-y: auto">
+                        @foreach (var autor in autores)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autor-@autor.Id"
+                                       checked="@modelo.AutorIds.Contains(autor.Id)"
+                                       @onchange="e => CambiarAutor(autor.Id, (bool)e.Value!)" />
+                                <label class="form-check-label" for="autor-@autor.Id">@autor.Nombre</label>
+                            </div>
+                        }
+                    </div>
+                    <ValidationMessage For="() => modelo.AutorIds" />
+                </div>
+
+                <button type="submit" class="btn btn-primary" disabled="@guardando">Guardar</button>
+                <a class="btn btn-outline-secondary ms-2" href="libros">Cancelar</a>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private LibroGuardarDto modelo = new();
+    private List<AutorDto>? autores;
+    private bool guardando;
+    private string? error;
+
+    private string Titulo => Id is null ? "Nuevo libro" : "Editar libro";
+
+    protected override async Task CargarAsync()
+    {
+        try
+        {
+            if (Id is not null)
+            {
+                var libro = await LibroApi.ObtenerAsync(Id.Value);
+                modelo = new LibroGuardarDto
+                {
+                    Titulo = libro.Titulo,
+                    Isbn = libro.Isbn,
+                    AnioPublicacion = libro.AnioPublicacion,
+                    EjemplaresTotales = libro.EjemplaresTotales,
+                    AutorIds = libro.Autores.Select(a => a.Id).ToList()
+                };
+            }
+            autores = await AutorApi.ListarAsync();
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private void CambiarAutor(int autorId, bool seleccionado)
+    {
+        if (seleccionado && !modelo.AutorIds.Contains(autorId)) modelo.AutorIds.Add(autorId);
+        if (!seleccionado) modelo.AutorIds.Remove(autorId);
+    }
+
+    private async Task GuardarAsync()
+    {
+        guardando = true;
+        error = null;
+        try
+        {
+            if (Id is null)
+                await LibroApi.CrearAsync(modelo);
+            else
+                await LibroApi.ActualizarAsync(Id.Value, modelo);
+
+            Nav.NavigateTo("libros");
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;   // ej. 409: ISBN repetido o total menor que los prestados
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+}

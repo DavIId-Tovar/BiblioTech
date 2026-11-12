@@ -1,0 +1,67 @@
+@page "/prestamos/vencidos"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject PrestamoApiService PrestamoApi
+
+<PageTitle>Vencidos · BiblioTech</PageTitle>
+
+<h1 class="h3 mb-1">Préstamos vencidos</h1>
+<p class="text-secondary mb-3">Reporte que sale de la vista SQL <code>vw_PrestamosVencidos</code>.</p>
+
+<Alerta Mensaje="@error" Tipo="danger" />
+
+@if (vencidos is null)
+{
+    @if (error is null) { <Cargando /> }
+}
+else if (vencidos.Count == 0)
+{
+    <div class="alert alert-success">No hay préstamos vencidos. 🎉</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Libro</th>
+                    <th>Socio</th>
+                    <th>Correo</th>
+                    <th>Prestado</th>
+                    <th>Debía devolverse</th>
+                    <th class="text-center">Días de retraso</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var v in vencidos)
+                {
+                    <tr>
+                        <td>@v.Titulo</td>
+                        <td>@v.Socio</td>
+                        <td><a href="mailto:@v.Email">@v.Email</a></td>
+                        <td>@v.FechaPrestamo.ToString("dd/MM/yyyy")</td>
+                        <td>@v.FechaDevolucionEsperada.ToString("dd/MM/yyyy")</td>
+                        <td class="text-center"><span class="badge text-bg-danger">@v.DiasRetraso</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<PrestamoVencidoDto>? vencidos;
+    private string? error;
+
+    protected override async Task CargarAsync()
+    {
+        try
+        {
+            vencidos = await PrestamoApi.ListarVencidosAsync();
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+    }
+}

@@ -1,0 +1,47 @@
+@page "/"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject DashboardApiService DashboardApi
+
+<PageTitle>Inicio · BiblioTech</PageTitle>
+
+<h1 class="h3 mb-4">Inicio</h1>
+
+<Alerta Mensaje="@error" Tipo="danger" />
+
+@if (resumen is null)
+{
+    @if (error is null) { <Cargando Texto="Cargando indicadores..." /> }
+}
+else
+{
+    @* Los números salen del procedimiento almacenado sp_ResumenDashboard *@
+    <div class="row g-3">
+        <Indicador Titulo="Libros" Valor="resumen.TotalLibros" Color="primary" Enlace="libros" />
+        <Indicador Titulo="Ejemplares disponibles" Valor="resumen.EjemplaresDisponibles" Color="success" Enlace="libros" />
+        <Indicador Titulo="Préstamos activos" Valor="resumen.PrestamosActivos" Color="info" Enlace="prestamos" />
+        <Indicador Titulo="Préstamos vencidos" Valor="resumen.PrestamosVencidos" Color="danger" Enlace="prestamos/vencidos" />
+        <Indicador Titulo="Socios activos" Valor="resumen.SociosActivos" Color="secondary" Enlace="socios" />
+    </div>
+
+    <div class="mt-4">
+        <a class="btn btn-primary" href="prestamos/nuevo">+ Nuevo préstamo</a>
+    </div>
+}
+
+@code {
+    private DashboardDto? resumen;
+    private string? error;
+
+    protected override async Task CargarAsync()
+    {
+        try
+        {
+            resumen = await DashboardApi.ObtenerAsync();
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+    }
+}

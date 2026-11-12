@@ -1,0 +1,19 @@
+@* Tarjeta de un indicador del dashboard. Ejemplo de componente con [Parameter]. *@
+
+<div class="col-6 col-md-4 col-xl">
+    <a href="@Enlace" class="text-decoration-none">
+        <div class="card h-100 border-@Color border-2 shadow-sm">
+            <div class="card-body">
+                <div class="small text-secondary">@Titulo</div>
+                <div class="display-6 fw-semibold text-@Color">@Valor</div>
+            </div>
+        </div>
+    </a>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public int Valor { get; set; }
+    [Parameter] public string Color { get; set; } = "primary";
+    [Parameter] public string Enlace { get; set; } = "";
+}

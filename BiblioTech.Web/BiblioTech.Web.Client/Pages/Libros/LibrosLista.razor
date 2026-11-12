@@ -1,0 +1,120 @@
+@page "/libros"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject LibroApiService LibroApi
+
+<PageTitle>Libros · BiblioTech</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Libros</h1>
+    <a class="btn btn-primary" href="libros/nuevo">+ Nuevo libro</a>
+</div>
+
+@* Búsqueda: viaja a la API como ?buscar= y SQL Server filtra con LIKE *@
+<form class="input-group mb-3" style="max-width: 520px" @onsubmit="BuscarAsync">
+    <input class="form-control" placeholder="Buscar por título, ISBN o autor" @bind="buscar" />
+    <button class="btn btn-outline-primary" type="submit">Buscar</button>
+    @if (!string.IsNullOrEmpty(buscar))
+    {
+        <button class="btn btn-outline-secondary" type="button" @onclick="LimpiarAsync">Limpiar</button>
+    }
+</form>
+
+<Alerta Mensaje="@mensaje" Tipo="@tipoMensaje" OnCerrar="() => mensaje = null" />
+
+@if (libros is null)
+{
+    @if (mensaje is null) { <Cargando /> }
+}
+else if (libros.Count == 0)
+{
+    <p class="text-secondary">No se encontraron libros.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Autores</th>
+                    <th>ISBN</th>
+                    <th class="text-center">Año</th>
+                    <th class="text-center">Disponibles</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var libro in libros)
+                {
+                    <tr>
+                        <td class="fw-semibold">@libro.Titulo</td>
+                        <td>@string.Join(", ", libro.Autores.Select(a => a.Nombre))</td>
+                        <td class="text-secondary small">@libro.Isbn</td>
+                        <td class="text-center">@libro.AnioPublicacion</td>
+                        <td class="text-center">
+                            <span class="badge @(libro.EjemplaresDisponibles > 0 ? "text-bg-success" : "text-bg-danger")">
+                                @libro.EjemplaresDisponibles de @libro.EjemplaresTotales
+                            </span>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-primary" href="libros/editar/@libro.Id">Editar</a>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => porEliminar = libro">Eliminar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<ConfirmarModal Visible="porEliminar is not null"
+                Titulo="Eliminar libro"
+                Mensaje="@($"¿Eliminar \"{porEliminar?.Titulo}\"? Esta acción no se puede deshacer.")"
+                TextoConfirmar="Eliminar"
+                OnConfirmar="EliminarAsync"
+                OnCancelar="() => porEliminar = null" />
+
+@code {
+    private List<LibroDto>? libros;
+    private LibroDto? porEliminar;
+    private string? buscar;
+    private string? mensaje;
+    private string tipoMensaje = "danger";
+
+    protected override async Task CargarAsync()
+    {
+        try
+        {
+            libros = await LibroApi.ListarAsync(buscar);
+        }
+        catch (ApiException ex)
+        {
+            (mensaje, tipoMensaje) = (ex.Message, "danger");
+        }
+    }
+
+    private Task BuscarAsync() => CargarAsync();
+
+    private Task LimpiarAsync()
+    {
+        buscar = null;
+        return CargarAsync();
+    }
+
+    private async Task EliminarAsync()
+    {
+        var libro = porEliminar!;
+        porEliminar = null;
+        try
+        {
+            await LibroApi.EliminarAsync(libro.Id);
+            (mensaje, tipoMensaje) = ($"Se eliminó \"{libro.Titulo}\".", "success");
+            await CargarAsync();
+        }
+        catch (ApiException ex)
+        {
+            (mensaje, tipoMensaje) = (ex.Message, "danger");   // ej. 409: tiene préstamos
+        }
+    }
+}
