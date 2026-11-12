@@ -1,0 +1,50 @@
+@* Campana de notificaciones de la barra superior: cuántos préstamos están en mora
+   o próximos a entregar. Se refresca cada vez que el bibliotecario cambia de página. *@
+@implements IDisposable
+@inject CalendarioApiService CalendarioApi
+@inject NavigationManager Nav
+
+<a href="calendario" class="btn btn-sm @(alertas?.Total > 0 ? "btn-warning" : "btn-outline-secondary") position-relative me-3"
+   title="@Resumen">
+    🔔
+    @if (alertas?.Total > 0)
+    {
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            @alertas.Total
+        </span>
+    }
+</a>
+
+@code {
+    private AlertasDto? alertas;
+
+    private string Resumen => alertas is null
+        ? "Notificaciones"
+        : $"{alertas.EnMora.Count} en mora · {alertas.ProximosAEntregar.Count} próximos a entregar";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += AlCambiarDePagina;
+        await CargarAsync();
+    }
+
+    private async void AlCambiarDePagina(object? sender, LocationChangedEventArgs e)
+    {
+        await CargarAsync();
+        StateHasChanged();
+    }
+
+    private async Task CargarAsync()
+    {
+        try
+        {
+            alertas = await CalendarioApi.ObtenerAlertasAsync();
+        }
+        catch (ApiException)
+        {
+            alertas = null;   // la campana no debe romper la barra: si falla, simplemente no muestra número
+        }
+    }
+
+    public void Dispose() => Nav.LocationChanged -= AlCambiarDePagina;
+}

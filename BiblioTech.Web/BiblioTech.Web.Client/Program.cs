@@ -27,6 +27,7 @@ builder.Services
 // ── Servicios HTTP: las páginas nunca usan HttpClient directamente ──
 builder.Services.AddScoped<AuthApiService>();
 builder.Services.AddScoped<DashboardApiService>();
+builder.Services.AddScoped<CalendarioApiService>();
 builder.Services.AddScoped<AutorApiService>();
 builder.Services.AddScoped<LibroApiService>();
 builder.Services.AddScoped<SocioApiService>();
