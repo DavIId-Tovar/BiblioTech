@@ -1,7 +1,7 @@
 @host = https://localhost:7225
 # 1) Ejecuta "registrar-inicial" una sola vez (con la tabla Usuarios vacía).
 # 2) Ejecuta "login", copia el token de la respuesta y pégalo aquí:
-@token = PEGA_AQUI_EL_TOKEN
+@token = PEGA_AQUI_EL_TOKEN8
 
 ### Crear el primer bibliotecario (solo funciona con la tabla Usuarios vacía)
 POST {{host}}/api/auth/registrar-inicial

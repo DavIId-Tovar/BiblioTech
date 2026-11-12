@@ -24,11 +24,15 @@ BiblioTech/
 ## Cómo ejecutarlo (primera vez)
 
 1. **Base de datos:** abrir `database/BiblioTech.sql` en SSMS (servidor local) y pulsar **F5**.
+
+
 2. **Cadena de conexión:** si tu servidor no es `localhost` (por ejemplo `.\SQLEXPRESS`),
    clic derecho en `BiblioTech.Api` → **Administrar secretos de usuario** y pega:
    ```json
    { "ConnectionStrings": { "BibliotecaDb": "Server=.\\SQLEXPRESS;Database=BiblioTech;Trusted_Connection=True;TrustServerCertificate=True" } }
    ```
+
+
 3. **Clave JWT (obligatoria, cada persona la suya):** en el mismo `secrets.json` agrega
    `"Jwt": { "Key": "una-clave-larga-de-minimo-32-caracteres-123456" }`, o desde una terminal
    en la carpeta `BiblioTech.Api`:
@@ -36,12 +40,18 @@ BiblioTech/
    dotnet user-secrets set "Jwt:Key" "una-clave-larga-de-minimo-32-caracteres-123456"
    ```
    Sin esta clave la API no arranca y lo dice en el mensaje de error.
+
+
 4. **Arrancar:** en Visual Studio, en el selector de inicio elegir **"Api + Web"** y pulsar ▶.
    - La Api abre **Scalar** en `https://localhost:7225/scalar`.
    - La Web abre en `https://localhost:7214`.
+
+
 5. **Crear el bibliotecario (una sola vez):** en Scalar ejecutar `POST /api/auth/registrar-inicial`
    (o usar `BiblioTech.Api/BiblioTech.Api.http`). Solo funciona mientras la tabla `Usuarios` esté vacía.
    El ejemplo del `.http` usa `bibliotecario@bibliotech.com` / `Biblio2026!` (solo para desarrollo).
+
+
 6. Iniciar sesión en la Web con ese usuario.
 
 > Si vuelves a ejecutar `BiblioTech.sql`, la tabla `Usuarios` queda vacía: repite el paso 5.
@@ -92,6 +102,4 @@ Scaffold-DbContext "Name=ConnectionStrings:BibliotecaDb" Microsoft.EntityFramewo
 `Data/PluralizadorEspanol.cs` hace que las clases salgan como `Autor` y `Libro.Autores`
 (el pluralizador por defecto es en inglés y generaba `Autore` y `Autors`).
 
-## Participante
 
-- Nombre: _(escribe aquí tu nombre en tu primer commit)_
