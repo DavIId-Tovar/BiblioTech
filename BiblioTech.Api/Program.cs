@@ -3,10 +3,12 @@ using BiblioTech.Api.Configuracion;
 using BiblioTech.Api.Data;
 using BiblioTech.Api.Middleware;
 using BiblioTech.Api.Services;
+using BiblioTech.Api.Services.Externos;
 using BiblioTech.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
@@ -27,6 +29,20 @@ builder.Services.AddScoped<ISocioService, SocioService>();
 builder.Services.AddScoped<IPrestamoService, PrestamoService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICalendarioService, CalendarioService>();
+
+// ── API EXTERNA de festivos (Nager.Date) ───────────────────────────────
+// AddHttpClient<Interfaz, Clase> = "cliente tipado": IHttpClientFactory crea y recicla
+// las conexiones (evita agotar sockets) y entrega a FestivosClient un HttpClient
+// ya configurado con la URL base y el tiempo máximo de espera.
+builder.Services.AddMemoryCache();
+builder.Services.Configure<FestivosApiOpciones>(builder.Configuration.GetSection(FestivosApiOpciones.Seccion));
+builder.Services.AddHttpClient<IFestivosClient, FestivosClient>((proveedor, cliente) =>
+{
+    var opciones = proveedor.GetRequiredService<IOptions<FestivosApiOpciones>>().Value;
+    cliente.BaseAddress = new Uri(opciones.BaseUrl);
+    cliente.Timeout = TimeSpan.FromSeconds(opciones.TimeoutSegundos);
+});
 
 // ── JWT ────────────────────────────────────────────────────────────────
 var jwt = builder.Configuration.GetSection(JwtOpciones.Seccion).Get<JwtOpciones>() ?? new JwtOpciones();

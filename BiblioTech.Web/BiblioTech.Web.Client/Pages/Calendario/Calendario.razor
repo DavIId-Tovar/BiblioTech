@@ -1,0 +1,214 @@
+@page "/calendario"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject CalendarioApiService CalendarioApi
+@using System.Globalization
+
+<PageTitle>Calendario · BiblioTech</PageTitle>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Calendario de entregas</h1>
+    <div class="btn-group">
+        <button class="btn btn-outline-secondary" @onclick="() => CambiarMesAsync(-1)" title="Mes anterior">◀</button>
+        <button class="btn btn-outline-secondary" @onclick="IrAHoyAsync">Hoy</button>
+        <button class="btn btn-outline-secondary" @onclick="() => CambiarMesAsync(1)" title="Mes siguiente">▶</button>
+    </div>
+</div>
+
+<Alerta Mensaje="@error" Tipo="danger" OnCerrar="() => error = null" />
+
+@if (mesActual is not null && !mesActual.FestivosDisponibles)
+{
+    <Alerta Mensaje="No se pudo consultar la API de festivos. El calendario se muestra sin festivos." Tipo="warning" />
+}
+
+<div class="row g-4">
+    @* ── Calendario del mes ── *@
+    <div class="col-xl-8">
+        <h2 class="h5">@NombreMes</h2>
+
+        <div class="d-flex flex-wrap gap-3 small mb-2">
+            <span><span class="leyenda festivo"></span> Festivo</span>
+            <span><span class="leyenda vencido"></span> Entrega en mora</span>
+            <span><span class="leyenda proximo"></span> Próxima a entregar</span>
+            <span><span class="leyenda activo"></span> Entrega pendiente</span>
+        </div>
+
+        @if (mesActual is null)
+        {
+            @if (error is null) { <Cargando Texto="Cargando calendario..." /> }
+        }
+        else
+        {
+            <div class="calendario">
+                @foreach (var nombre in DiasSemana)
+                {
+                    <div class="cabecera">@nombre</div>
+                }
+
+                @foreach (var dia in DiasDelGrid())
+                {
+                    var festivo = mesActual.Festivos.FirstOrDefault(f => f.Fecha == dia);
+                    var entregas = mesActual.Entregas.Where(e => DateOnly.FromDateTime(e.FechaDevolucionEsperada) == dia).ToList();
+                    var fueraDelMes = dia.Month != mesActual.Mes;
+
+                    <div class="dia @(fueraDelMes ? "fuera" : "") @(festivo is not null ? "es-festivo" : "") @(dia == hoy ? "hoy" : "")">
+                        <div class="numero">@dia.Day</div>
+
+                        @if (festivo is not null && !fueraDelMes)
+                        {
+                            <div class="festivo-nombre" title="@festivo.Nombre">🎉 @festivo.Nombre</div>
+                        }
+
+                        @if (!fueraDelMes)
+                        {
+                            @foreach (var entrega in entregas)
+                            {
+                                <div class="entrega @ClaseEntrega(entrega)" title="@entrega.Socio · @entrega.Titulo">
+                                    @entrega.Socio
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @* ── Panel de notificaciones ── *@
+    <div class="col-xl-4">
+        @if (alertas is not null)
+        {
+            @if (alertas.ProximoFestivo is not null)
+            {
+                <div class="alert alert-info py-2 small">
+                    🎉 Próximo festivo: <strong>@alertas.ProximoFestivo.Fecha.ToString("dddd d 'de' MMMM", es)</strong>
+                    · @alertas.ProximoFestivo.Nombre
+                </div>
+            }
+
+            <div class="card shadow-sm mb-3 border-danger">
+                <div class="card-header bg-danger text-white">⚠️ En mora (@alertas.EnMora.Count)</div>
+                <ul class="list-group list-group-flush">
+                    @if (alertas.EnMora.Count == 0)
+                    {
+                        <li class="list-group-item text-secondary small">No hay préstamos en mora.</li>
+                    }
+                    @foreach (var a in alertas.EnMora)
+                    {
+                        <li class="list-group-item small">
+                            <strong>@a.Socio</strong> · @a.Titulo<br />
+                            <span class="text-danger">@a.Dias día(s) de retraso</span>
+                            · <a href="mailto:@a.Email">@a.Email</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            <div class="card shadow-sm border-warning">
+                <div class="card-header bg-warning">⏰ Próximos a entregar (@alertas.ProximosAEntregar.Count)</div>
+                <ul class="list-group list-group-flush">
+                    @if (alertas.ProximosAEntregar.Count == 0)
+                    {
+                        <li class="list-group-item text-secondary small">Nadie entrega en los próximos @alertas.DiasHabilesAviso días hábiles.</li>
+                    }
+                    @foreach (var a in alertas.ProximosAEntregar)
+                    {
+                        <li class="list-group-item small">
+                            <strong>@a.Socio</strong> · @a.Titulo<br />
+                            Entrega el @a.FechaDevolucionEsperada.ToString("dddd d 'de' MMMM", es)
+                            · <span class="fw-semibold">@TextoDiasHabiles(a.Dias)</span>
+                        </li>
+                    }
+                </ul>
+                <div class="card-footer small text-secondary">
+                    Días hábiles = lunes a viernes sin festivos (los festivos vienen de la API externa).
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo es = new("es-CO");
+    private static readonly string[] DiasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+    private readonly DateOnly hoy = DateOnly.FromDateTime(DateTime.Now);
+    private DateOnly mesVisible = new(DateTime.Now.Year, DateTime.Now.Month, 1);
+    private CalendarioMesDto? mesActual;
+    private AlertasDto? alertas;
+    private string? error;
+
+    // "noviembre de 2026" → "Noviembre de 2026"
+    private string NombreMes
+    {
+        get
+        {
+            var texto = mesVisible.ToString("MMMM 'de' yyyy", es);
+            return char.ToUpper(texto[0], es) + texto[1..];
+        }
+    }
+
+    protected override async Task CargarAsync()
+    {
+        await CargarMesAsync();
+        try
+        {
+            alertas = await CalendarioApi.ObtenerAlertasAsync();
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task CargarMesAsync()
+    {
+        mesActual = null;
+        try
+        {
+            mesActual = await CalendarioApi.ObtenerMesAsync(mesVisible.Year, mesVisible.Month);
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private Task CambiarMesAsync(int meses)
+    {
+        mesVisible = mesVisible.AddMonths(meses);
+        return CargarMesAsync();
+    }
+
+    private Task IrAHoyAsync()
+    {
+        mesVisible = new DateOnly(hoy.Year, hoy.Month, 1);
+        return CargarMesAsync();
+    }
+
+    /// <summary>Semanas completas (de lunes a domingo) que cubren el mes visible.</summary>
+    private IEnumerable<DateOnly> DiasDelGrid()
+    {
+        // DayOfWeek: domingo = 0. Se ajusta para que la semana empiece el lunes.
+        var desfase = ((int)mesVisible.DayOfWeek + 6) % 7;
+        var inicio = mesVisible.AddDays(-desfase);
+        var fin = mesVisible.AddMonths(1).AddDays(-1);
+        for (var dia = inicio; dia <= fin || dia.DayOfWeek != DayOfWeek.Monday; dia = dia.AddDays(1))
+            yield return dia;
+    }
+
+    private string ClaseEntrega(EntregaDto entrega)
+    {
+        if (entrega.Estado == EstadosPrestamo.Vencido) return "vencido";
+        var esProxima = alertas?.ProximosAEntregar.Any(a => a.PrestamoId == entrega.PrestamoId) == true;
+        return esProxima ? "proximo" : "activo";
+    }
+
+    private static string TextoDiasHabiles(int dias) => dias switch
+    {
+        0 => "vence hoy",
+        1 => "queda 1 día hábil",
+        _ => $"quedan {dias} días hábiles"
+    };
+}

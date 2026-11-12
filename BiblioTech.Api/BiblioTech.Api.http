@@ -67,3 +67,21 @@ Content-Type: application/json
 ### Préstamos vencidos (vista SQL)
 GET {{host}}/api/prestamos/vencidos
 Authorization: Bearer {{token}}
+
+### ── Calendario (consume la API externa de festivos) ──
+
+### Festivos de Colombia 2026 (Nager.Date, traducidos a nuestro formato)
+GET {{host}}/api/calendario/festivos/2026
+Authorization: Bearer {{token}}
+
+### Entregas pendientes y festivos de un mes
+GET {{host}}/api/calendario?anio=2026&mes=11
+Authorization: Bearer {{token}}
+
+### Alertas: en mora y próximos a entregar (días hábiles)
+GET {{host}}/api/calendario/alertas
+Authorization: Bearer {{token}}
+
+### Mes inválido → 400
+GET {{host}}/api/calendario?anio=2026&mes=13
+Authorization: Bearer {{token}}

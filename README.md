@@ -81,6 +81,25 @@ R4 (devolución = préstamo + 15 días) y R5 (transacción que resta/suma ejempl
 | PUT | `/api/prestamos/{id}/devolver` | Registrar devolución |
 | GET | `/api/prestamos/vencidos` | Reporte desde la vista `vw_PrestamosVencidos` |
 | GET | `/api/dashboard` | Indicadores desde `sp_ResumenDashboard` |
+| GET | `/api/calendario?anio=&mes=` | Entregas pendientes del mes + festivos (API externa) |
+| GET | `/api/calendario/alertas` | En mora y próximos a entregar (≤ 7 días hábiles) |
+| GET | `/api/calendario/festivos/{anio}` | Festivos de Colombia traducidos a nuestro formato |
+
+## Consumo de APIs
+
+```
+Navegador (Blazor WASM) ──HTTP + JWT──▶ BiblioTech.Api ──HTTP──▶ Nager.Date (festivos, pública)
+                                              │
+                                              └──EF Core──▶ SQL Server
+```
+
+1. **Blazor → nuestra API:** `IHttpClientFactory` con el cliente con nombre `"Api"`
+   (`Web.Client/Program.cs`), `AuthHeaderHandler` agrega el token y `ApiServiceBase`
+   convierte los errores (ProblemDetails) en `ApiException`.
+2. **Nuestra API → API externa:** cliente tipado `Services/Externos/FestivosClient.cs`
+   registrado con `AddHttpClient<IFestivosClient, FestivosClient>` (`Api/Program.cs`),
+   configuración en la sección `FestivosApi` de `appsettings.json`, caché en memoria
+   y respaldo: si la API externa falla, el calendario sigue funcionando sin festivos.
 
 ## Etiquetas (puntos seguros)
 

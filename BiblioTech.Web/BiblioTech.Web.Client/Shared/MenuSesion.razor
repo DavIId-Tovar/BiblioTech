@@ -5,6 +5,7 @@
 
 <AuthorizeView>
     <Authorized>
+        <CampanaAlertas />
         <span class="text-secondary me-3 small">👤 @context.User.Identity?.Name</span>
         <button class="btn btn-sm btn-outline-secondary" @onclick="CerrarSesionAsync">Cerrar sesión</button>
     </Authorized>
