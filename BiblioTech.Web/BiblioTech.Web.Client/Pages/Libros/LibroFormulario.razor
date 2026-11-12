@@ -4,6 +4,7 @@
 @inherits PaginaProtegida
 @inject LibroApiService LibroApi
 @inject AutorApiService AutorApi
+@inject NotificacionService Notificaciones
 
 <PageTitle>@Titulo · BiblioTech</PageTitle>
 
@@ -121,6 +122,9 @@ else
             else
                 await LibroApi.ActualizarAsync(Id.Value, modelo);
 
+            Notificaciones.Guardar(Id is null
+                ? $"Se creó el libro \"{modelo.Titulo}\"."
+                : $"Se actualizó el libro \"{modelo.Titulo}\".");
             Nav.NavigateTo("libros");
         }
         catch (ApiException ex)

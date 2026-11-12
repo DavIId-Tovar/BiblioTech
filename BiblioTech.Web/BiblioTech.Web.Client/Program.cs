@@ -32,4 +32,7 @@ builder.Services.AddScoped<LibroApiService>();
 builder.Services.AddScoped<SocioApiService>();
 builder.Services.AddScoped<PrestamoApiService>();
 
+// ── Mensajes de éxito que pasan del formulario a la lista ──
+builder.Services.AddScoped<NotificacionService>();
+
 await builder.Build().RunAsync();

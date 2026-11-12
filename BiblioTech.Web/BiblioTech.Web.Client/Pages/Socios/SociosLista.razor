@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inherits PaginaProtegida
 @inject SocioApiService SocioApi
+@inject NotificacionService Notificaciones
 
 <PageTitle>Socios · BiblioTech</PageTitle>
 
@@ -14,7 +15,7 @@
 
 @if (socios is null)
 {
-    @if (mensaje is null) { <Cargando /> }
+    @if (mensaje is null || tipoMensaje == "success") { <Cargando /> }
 }
 else
 {
@@ -69,6 +70,13 @@ else
     private SocioDto? porDesactivar;
     private string? mensaje;
     private string tipoMensaje = "danger";
+
+    // Si venimos de crear o editar, el formulario dejó un mensaje de éxito
+    protected override void OnInitialized()
+    {
+        if (Notificaciones.Tomar() is { } exito)
+            (mensaje, tipoMensaje) = (exito, "success");
+    }
 
     protected override async Task CargarAsync()
     {

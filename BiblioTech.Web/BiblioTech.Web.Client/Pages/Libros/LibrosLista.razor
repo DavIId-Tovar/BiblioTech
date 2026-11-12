@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inherits PaginaProtegida
 @inject LibroApiService LibroApi
+@inject NotificacionService Notificaciones
 
 <PageTitle>Libros · BiblioTech</PageTitle>
 
@@ -24,7 +25,7 @@
 
 @if (libros is null)
 {
-    @if (mensaje is null) { <Cargando /> }
+    @if (mensaje is null || tipoMensaje == "success") { <Cargando /> }
 }
 else if (libros.Count == 0)
 {
@@ -81,6 +82,13 @@ else
     private string? buscar;
     private string? mensaje;
     private string tipoMensaje = "danger";
+
+    // Si venimos de crear o editar, el formulario dejó un mensaje de éxito
+    protected override void OnInitialized()
+    {
+        if (Notificaciones.Tomar() is { } exito)
+            (mensaje, tipoMensaje) = (exito, "success");
+    }
 
     protected override async Task CargarAsync()
     {
