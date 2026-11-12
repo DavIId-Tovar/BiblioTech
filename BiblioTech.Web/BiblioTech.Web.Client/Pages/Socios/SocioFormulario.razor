@@ -3,6 +3,7 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inherits PaginaProtegida
 @inject SocioApiService SocioApi
+@inject NotificacionService Notificaciones
 
 <PageTitle>@Titulo · BiblioTech</PageTitle>
 
@@ -98,6 +99,9 @@ else
             else
                 await SocioApi.ActualizarAsync(Id.Value, modelo);
 
+            Notificaciones.Guardar(Id is null
+                ? $"Se creó el socio {modelo.Nombre}."
+                : $"Se actualizó el socio {modelo.Nombre}.");
             Nav.NavigateTo("socios");
         }
         catch (ApiException ex)

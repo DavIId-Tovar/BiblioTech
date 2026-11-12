@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inherits PaginaProtegida
 @inject AutorApiService AutorApi
+@inject NotificacionService Notificaciones
 
 <PageTitle>Autores · BiblioTech</PageTitle>
 
@@ -14,7 +15,7 @@
 
 @if (autores is null)
 {
-    @if (mensaje is null) { <Cargando /> }
+    @if (mensaje is null || tipoMensaje == "success") { <Cargando /> }
 }
 else if (autores.Count == 0)
 {
@@ -62,6 +63,13 @@ else
     private AutorDto? porEliminar;
     private string? mensaje;
     private string tipoMensaje = "danger";
+
+    // Si venimos de crear o editar, el formulario dejó un mensaje de éxito
+    protected override void OnInitialized()
+    {
+        if (Notificaciones.Tomar() is { } exito)
+            (mensaje, tipoMensaje) = (exito, "success");
+    }
 
     protected override async Task CargarAsync()
     {
