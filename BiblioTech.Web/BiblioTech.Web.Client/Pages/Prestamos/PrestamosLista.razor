@@ -1,0 +1,136 @@
+@page "/prestamos"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject PrestamoApiService PrestamoApi
+
+<PageTitle>Préstamos · BiblioTech</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Préstamos</h1>
+    <a class="btn btn-primary" href="prestamos/nuevo">+ Nuevo préstamo</a>
+</div>
+
+@* Filtro: viaja como ?estado= ; "Vencido" lo calcula la API, no está guardado *@
+<div class="btn-group mb-3" role="group" aria-label="Filtrar por estado">
+    @foreach (var opcion in filtros)
+    {
+        <button type="button"
+                class="btn @(filtro == opcion.Valor ? "btn-primary" : "btn-outline-primary")"
+                @onclick="() => FiltrarAsync(opcion.Valor)">
+            @opcion.Texto
+        </button>
+    }
+</div>
+
+<Alerta Mensaje="@mensaje" Tipo="@tipoMensaje" OnCerrar="() => mensaje = null" />
+
+@if (prestamos is null)
+{
+    @if (mensaje is null) { <Cargando /> }
+}
+else if (prestamos.Count == 0)
+{
+    <p class="text-secondary">No hay préstamos con ese filtro.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Libro</th>
+                    <th>Socio</th>
+                    <th>Prestado</th>
+                    <th>Devolver antes de</th>
+                    <th>Devuelto</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-end">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var prestamo in prestamos)
+                {
+                    <tr>
+                        <td>@prestamo.Titulo</td>
+                        <td>@prestamo.Socio</td>
+                        <td>@prestamo.FechaPrestamo.ToString("dd/MM/yyyy")</td>
+                        <td>@prestamo.FechaDevolucionEsperada.ToString("dd/MM/yyyy")</td>
+                        <td>@(prestamo.FechaDevolucionReal?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="text-center"><span class="badge @ColorEstado(prestamo.Estado)">@prestamo.Estado</span></td>
+                        <td class="text-end">
+                            @if (prestamo.Estado != EstadosPrestamo.Devuelto)
+                            {
+                                <button class="btn btn-sm btn-outline-success" @onclick="() => porDevolver = prestamo">Devolver</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<ConfirmarModal Visible="porDevolver is not null"
+                Titulo="Registrar devolución"
+                Mensaje="@($"¿{porDevolver?.Socio} devuelve \"{porDevolver?.Titulo}\"?")"
+                TextoConfirmar="Registrar devolución"
+                TipoBoton="success"
+                OnConfirmar="DevolverAsync"
+                OnCancelar="() => porDevolver = null" />
+
+@code {
+    private static readonly (string? Valor, string Texto)[] filtros =
+    [
+        (null, "Todos"),
+        (EstadosPrestamo.Activo, "Activos"),
+        (EstadosPrestamo.Vencido, "Vencidos"),
+        (EstadosPrestamo.Devuelto, "Devueltos")
+    ];
+
+    private List<PrestamoDto>? prestamos;
+    private PrestamoDto? porDevolver;
+    private string? filtro;
+    private string? mensaje;
+    private string tipoMensaje = "danger";
+
+    protected override async Task CargarAsync()
+    {
+        try
+        {
+            prestamos = await PrestamoApi.ListarAsync(filtro);
+        }
+        catch (ApiException ex)
+        {
+            (mensaje, tipoMensaje) = (ex.Message, "danger");
+        }
+    }
+
+    private Task FiltrarAsync(string? nuevoFiltro)
+    {
+        filtro = nuevoFiltro;
+        return CargarAsync();
+    }
+
+    private async Task DevolverAsync()
+    {
+        var prestamo = porDevolver!;
+        porDevolver = null;
+        try
+        {
+            await PrestamoApi.DevolverAsync(prestamo.Id);   // transacción en la API: +1 ejemplar
+            (mensaje, tipoMensaje) = ($"Devolución registrada: \"{prestamo.Titulo}\".", "success");
+            await CargarAsync();
+        }
+        catch (ApiException ex)
+        {
+            (mensaje, tipoMensaje) = (ex.Message, "danger");
+        }
+    }
+
+    private static string ColorEstado(string estado) => estado switch
+    {
+        EstadosPrestamo.Activo => "text-bg-primary",
+        EstadosPrestamo.Vencido => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
+}

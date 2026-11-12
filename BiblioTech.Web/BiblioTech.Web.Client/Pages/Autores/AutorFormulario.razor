@@ -1,0 +1,93 @@
+@page "/autores/nuevo"
+@page "/autores/editar/{Id:int}"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inherits PaginaProtegida
+@inject AutorApiService AutorApi
+
+@* Una sola página para crear y editar: si llega Id es edición. *@
+<PageTitle>@Titulo · BiblioTech</PageTitle>
+
+<h1 class="h3 mb-3">@Titulo</h1>
+
+<Alerta Mensaje="@error" Tipo="danger" OnCerrar="() => error = null" />
+
+@if (!cargado)
+{
+    @if (error is null) { <Cargando /> }
+}
+else
+{
+    <div class="card shadow-sm" style="max-width: 560px">
+        <div class="card-body">
+            <EditForm Model="modelo" OnValidSubmit="GuardarAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label" for="nombre">Nombre</label>
+                    <InputText id="nombre" class="form-control" @bind-Value="modelo.Nombre" />
+                    <ValidationMessage For="() => modelo.Nombre" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label" for="nacionalidad">Nacionalidad <span class="text-secondary">(opcional)</span></label>
+                    <InputText id="nacionalidad" class="form-control" @bind-Value="modelo.Nacionalidad" />
+                    <ValidationMessage For="() => modelo.Nacionalidad" />
+                </div>
+
+                <button type="submit" class="btn btn-primary" disabled="@guardando">Guardar</button>
+                <a class="btn btn-outline-secondary ms-2" href="autores">Cancelar</a>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private AutorGuardarDto modelo = new();
+    private bool cargado;
+    private bool guardando;
+    private string? error;
+
+    private string Titulo => Id is null ? "Nuevo autor" : "Editar autor";
+
+    protected override async Task CargarAsync()
+    {
+        try
+        {
+            if (Id is not null)
+            {
+                var autor = await AutorApi.ObtenerAsync(Id.Value);
+                modelo = new AutorGuardarDto { Nombre = autor.Nombre, Nacionalidad = autor.Nacionalidad };
+            }
+            cargado = true;
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        guardando = true;
+        error = null;
+        try
+        {
+            if (Id is null)
+                await AutorApi.CrearAsync(modelo);
+            else
+                await AutorApi.ActualizarAsync(Id.Value, modelo);
+
+            Nav.NavigateTo("autores");
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+}
